@@ -1,32 +1,68 @@
 "use client";
 
 import { subscribeToPushes } from "@/app/actions";
-import { VAPID_PUBLIC } from "../app.globals";
+import process from "process";
 
 export default function Subscribe() {
-  async function onSubscribe() {
-    if ("serviceWorker" in navigator) {
-      const handleServiceWorker = async () => {
-        const register = await navigator.serviceWorker.register("/service-worker.js");
-  
-        const subscription = await register.pushManager.subscribe({
+  async function subscribeClicked() {
+    console.log('clicked to subscribe');
+    navigator.serviceWorker.register("/service-worker.js").then(function (reg) {
+      async function doSubscribe() {
+        console.log("subscribing...");
+        const subscription = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: VAPID_PUBLIC,
+          applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC,
         });
-  
-        console.log('invoking subscribeToPushes to the backend...');
-        const data = await subscribeToPushes(JSON.stringify(subscription));  
-        console.log(data);
-      };
-      handleServiceWorker();
-    }
+        console.log("done!");
+
+        console.log("record subscription on the backend...");
+        await subscribeToPushes(JSON.stringify(subscription));
+        console.log("done!!");
+      }
+
+      async function handleRegistration() {
+        let serviceWorker;
+        if (reg.installing) {
+          serviceWorker = reg.installing;
+          console.log('Service worker installing');
+        } else if (reg.waiting) {
+          serviceWorker = reg.waiting;
+          console.log('Service worker installed & waiting');
+        } else if (reg.active) {
+          serviceWorker = reg.active;
+          console.log('Service worker active');
+        }
+
+        if (serviceWorker) {
+          console.log("service worker current state", serviceWorker.state);
+          if (serviceWorker.state == "activated") {
+            console.log("service worker already activated - let's subscribe");
+
+            await doSubscribe();
+          }
+          serviceWorker.addEventListener("statechange", async function(e) {
+            console.log("service worker statechange : ", e.target.state);
+            if (e.target.state == "activated") {
+              // use pushManger for subscribing here.
+              console.log("Just now activated - let's subscribe")
+
+              await doSubscribe();
+            }
+          });
+        }  
+      }
+      handleRegistration();
+    },
+    function (err) {
+        console.error('unsuccessful registration with /service-worker.js', err);
+    })
   }
 
   return (
     <button
       className="m-5 shadow bg-purple-500 hover:bg-purple-400 focus:shadow-outline focus:outline-none text-white font-bold py-2 px-4 rounded"
       type="button"
-      onClick={onSubscribe}
+      onClick={subscribeClicked}
     >
       Subscribe to notifications
     </button>
