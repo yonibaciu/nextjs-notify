@@ -38,4 +38,6 @@ export async function sendPush() {
     await Promise.all(calls);
     console.log('done sending');  
   }
+
+  return subscriptions.length;
 }

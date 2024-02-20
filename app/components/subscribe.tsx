@@ -1,6 +1,7 @@
 "use client";
 
 import { subscribeToPushes } from "@/app/actions";
+import { toast } from 'sonner';
 import process from "process";
 
 export default function Subscribe() {
@@ -17,6 +18,7 @@ export default function Subscribe() {
 
         console.log("record subscription on the backend...");
         await subscribeToPushes(JSON.stringify(subscription));
+        toast.success('Subscribed to push notifications!');
         console.log("done!!");
       }
 
